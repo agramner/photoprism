@@ -19,46 +19,74 @@ func (w *Faces) Optimize() (result FacesOptimizeResult, err error) {
 		return result, fmt.Errorf("facial recognition is disabled")
 	}
 
-	// Iterative merging of manually added face clusters.
-	for i := 0; i <= 10; i++ {
-		var n int
-		var c = result.Merged
-		var merge entity.Faces
-		var faces entity.Faces
+	// Fetch manually added faces from the database.
+	allFaces, err := query.ManuallyAddedFaces(false)
+	if err != nil {
+		return result, err
+	}
 
-		// Fetch manually added faces from the database.
-		if faces, err = query.ManuallyAddedFaces(false); err != nil {
-			return result, err
-		} else if n = len(faces) - 1; n < 1 {
-			// Need at least 2 faces to optimize.
-			break
+	// Need at least 2 faces to optimize.
+	if len(allFaces) < 2 {
+		return result, nil
+	}
+
+	// Group faces by subject UID
+	groups := map[string]entity.Faces{}
+	for _, face := range allFaces {
+		if face.SubjUID == "" {
+			// TODO: Unncessary?
+			continue
 		}
 
-		// Find and merge matching faces.
-		for j := 0; j <= n; j++ {
-			if len(merge) == 0 {
-				merge = entity.Faces{faces[j]}
-			} else if faces[j].SubjUID != merge[len(merge)-1].SubjUID || j == n {
-				if len(merge) < 2 {
-					// Nothing to merge.
-				} else if _, err := query.MergeFaces(merge); err != nil {
-					log.Errorf("%s (merge)", err)
-				} else {
-					result.Merged += len(merge)
+		if _, exists := groups[face.SubjUID]; !exists {
+			groups[face.SubjUID] = entity.Faces{}
+		}
+
+		groups[face.SubjUID] = append(groups[face.SubjUID], face)
+	}
+
+	// For each subject group, try to find pairs of matching faces and merge them if found
+	for subjUID, faces := range groups {
+		paired := map[string]struct{}{}
+		for i := range faces {
+			for j := range faces {
+				if i == j {
+					// Skip matching faces with them self
+					continue
 				}
 
-				merge = nil
-			} else if ok, dist := merge[0].Match(face.Embeddings{faces[j].Embedding()}); ok {
-				log.Debugf("faces: can merge %s with %s, subject %s, dist %f", merge[0].ID, faces[j].ID, merge[0].SubjUID, dist)
-				merge = append(merge, faces[j])
-			} else if len(merge) == 1 {
-				merge = nil
-			}
-		}
+				if _, exist := paired[faces[i].ID]; exist {
+					// Skip this face, already been paired
+					continue
+				}
 
-		// Done?
-		if result.Merged <= c {
-			break
+				if _, exist := paired[faces[j].ID]; exist {
+					// Skip this face, already been paired
+					continue
+				}
+
+				faceA := faces[i]
+				faceB := faces[j]
+				match, dist := faceA.Match(face.Embeddings{faceB.Embedding()})
+				if !match {
+					// No match, continue
+					continue
+				}
+
+				log.Debugf("faces: can merge %s with %s, subject %s, dist %f", faceA.ID, faceB.ID, subjUID, dist)
+
+				// Mark the faces as already paired
+				paired[faceA.ID] = struct{}{}
+				paired[faceB.ID] = struct{}{}
+
+				// Merge the paired faces
+				if _, err := query.MergeFaces(entity.Faces{faceA, faceB}); err != nil {
+					log.Errorf("%s (merge)", err)
+					continue
+				}
+
+				result.Merged += 2
+			}
 		}
 	}
 
