@@ -6,7 +6,7 @@
     <v-form ref="form" class="p-people-search" lazy-validation dense @submit.prevent="updateQuery">
       <v-toolbar dense flat class="page-toolbar" color="secondary-light pa-0">
         <v-text-field id="search"
-                      v-model="filter.q"
+                      @input="onSearchInput"
                       class="input-search background-inherit elevation-0"
                       solo hide-details
                       :label="$gettext('Search')"
@@ -259,6 +259,9 @@ export default {
     }
   },
   methods: {
+    onSearchInput(value) {
+      this.filter.q = value;
+    },
     onSave(m) {
       if (!m.Name || m.Name.trim() === "") {
         // Refuse to save empty name.
