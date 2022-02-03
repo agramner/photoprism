@@ -33,139 +33,8 @@
       </v-toolbar>
     </v-form>
 
-    <v-container v-if="loading" fluid class="pa-4">
-      <v-progress-linear color="secondary-dark" :indeterminate="true"></v-progress-linear>
-    </v-container>
-    <v-container v-else fluid class="pa-0">
-      <p-subject-clipboard :refresh="refresh" :selection="selection"
-                           :clear-selection="clearSelection"></p-subject-clipboard>
-
-      <p-scroll-top></p-scroll-top>
-
-      <v-container grid-list-xs fluid class="pa-2">
-        <v-alert
-            :value="results.length === 0"
-            color="secondary-dark" icon="lightbulb_outline" class="no-results ma-2 opacity-70" outline
-        >
-          <h3 class="body-2 ma-0 pa-0">
-            <translate>No people found</translate>
-          </h3>
-          <p class="body-1 mt-2 mb-0 pa-0">
-            <translate>Try again using other filters or keywords.</translate>
-            <translate>You may rescan your library to find additional faces.</translate>
-            <translate>Recognition starts after indexing has been completed.</translate>
-          </p>
-        </v-alert>
-        <v-layout row wrap class="search-results subject-results cards-view"
-                  :class="{'select-results': selection.length > 0}">
-          <v-flex
-              v-for="(model, index) in results"
-              :key="model.UID"
-              xs6 sm4 md3 lg2 xxl1 d-flex
-          >
-            <v-card tile
-                    :data-uid="model.UID"
-                    style="user-select: none"
-                    class="result accent lighten-3"
-                    :class="model.classes(selection.includes(model.UID))"
-                    :to="model.route(view)"
-                    @contextmenu.stop="onContextMenu($event, index)"
-            >
-              <div class="card-background accent lighten-3"></div>
-              <v-img
-                  :src="model.thumbnailUrl('tile_320')"
-                  :alt="model.Name"
-                  :transition="false"
-                  aspect-ratio="1"
-                  style="user-select: none"
-                  class="accent lighten-2 clickable"
-                  @touchstart="input.touchStart($event, index)"
-                  @touchend.prevent="onClick($event, index)"
-                  @mousedown="input.mouseDown($event, index)"
-                  @click.stop.prevent="onClick($event, index)"
-              >
-                <v-btn :ripple="false" :depressed="false" class="input-hidden"
-                       icon flat small absolute
-                       @touchstart.stop.prevent="input.touchStart($event, index)"
-                       @touchend.stop.prevent="onToggleHidden($event, index)"
-                       @touchmove.stop.prevent
-                       @click.stop.prevent="onToggleHidden($event, index)">
-                  <v-icon color="white" class="select-on" :title="$gettext('Show')">visibility_off</v-icon>
-                  <v-icon color="white" class="select-off" :title="$gettext('Hide')">clear</v-icon>
-                </v-btn>
-                <v-btn :ripple="false"
-                       icon flat absolute
-                       class="input-select"
-                       @touchstart.stop.prevent="input.touchStart($event, index)"
-                       @touchend.stop.prevent="onSelect($event, index)"
-                       @touchmove.stop.prevent
-                       @click.stop.prevent="onSelect($event, index)">
-                  <v-icon color="white" class="select-on">check_circle</v-icon>
-                  <v-icon color="white" class="select-off">radio_button_off</v-icon>
-                </v-btn>
-
-                <v-btn :ripple="false"
-                       icon flat absolute
-                       class="input-favorite"
-                       @touchstart.stop.prevent="input.touchStart($event, index)"
-                       @touchend.stop.prevent="toggleLike($event, index)"
-                       @touchmove.stop.prevent
-                       @click.stop.prevent="toggleLike($event, index)">
-                  <v-icon color="#FFD600" class="select-on">star</v-icon>
-                  <v-icon color="white" class="select-off">star_border</v-icon>
-                </v-btn>
-              </v-img>
-
-              <v-card-title primary-title class="pa-3 card-details" style="user-select: none;" @click.stop.prevent="">
-                <v-edit-dialog
-                    :return-value.sync="model.Name"
-                    lazy
-                    class="inline-edit"
-                    @save="onSave(model)"
-                >
-                  <span v-if="model.Name" class="body-2 ma-0">
-                      {{ model.Name }}
-                  </span>
-                  <span v-else>
-                      <v-icon>edit</v-icon>
-                  </span>
-                  <template #input>
-                    <v-text-field
-                        v-model="model.Name"
-                        :rules="[titleRule]"
-                        :readonly="readonly"
-                        :label="$gettext('Name')"
-                        color="secondary-dark"
-                        class="input-rename background-inherit elevation-0"
-                        single-line autofocus solo hide-details
-                    ></v-text-field>
-                  </template>
-                </v-edit-dialog>
-              </v-card-title>
-
-              <v-card-text primary-title class="pb-2 pt-0 card-details" style="user-select: none;"
-                           @click.stop.prevent="">
-                <div v-if="model.Bio" class="caption mb-2" :title="$gettext('Bio')">
-                  {{ model.Bio | truncate(100) }}
-                </div>
-
-                <div class="caption mb-2">
-                  <button v-if="model.PhotoCount === 1">
-                    <translate>Contains one picture.</translate>
-                  </button>
-                  <button v-else-if="model.PhotoCount > 0">
-                    <translate :translate-params="{n: model.PhotoCount}">Contains %{n} pictures.</translate>
-                  </button>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-flex>
-        </v-layout>
-      </v-container>
-    </v-container>
+    <sublist :results="results" :loading="loading"/>
     <p-sponsor-dialog :show="dialog.sponsor" @close="dialog.sponsor = false"></p-sponsor-dialog>
-    <p-people-merge-dialog lazy :show="merge.show" :subj1="merge.subj1" :subj2="merge.subj2" @cancel="onCancelMerge"
-                           @confirm="onMerge"></p-people-merge-dialog>
   </div>
 </template>
 
@@ -176,12 +45,16 @@ import RestModel from "model/rest";
 import {MaxItems} from "common/clipboard";
 import Notify from "common/notify";
 import {ClickLong, ClickShort, Input, InputInvalid} from "common/input";
+import Sublist from "./sublist.vue"
 
 export default {
   name: 'PPageSubjects',
   props: {
     staticFilter: Object,
     active: Boolean,
+  },
+  components: {
+    'sublist': Sublist,
   },
   data() {
     const query = this.$route.query;
@@ -209,7 +82,6 @@ export default {
       filter: filter,
       lastFilter: {},
       routeName: routeName,
-      titleRule: v => v.length <= this.$config.get("clip") || this.$gettext("Name too long"),
       input: new Input(),
       lastId: "",
       dialog: {
@@ -312,87 +184,6 @@ export default {
       this.offset = offset;
       window.localStorage.setItem("subjects_offset", offset);
     },
-    toggleLike(ev, index) {
-      const inputType = this.input.eval(ev, index);
-
-      if (inputType !== ClickShort) {
-        return;
-      }
-
-      const m = this.results[index];
-
-      if (!m) {
-        return;
-      }
-
-      m.toggleLike();
-    },
-    selectRange(rangeEnd, models) {
-      if (!models || !models[rangeEnd] || !(models[rangeEnd] instanceof RestModel)) {
-        console.warn("selectRange() - invalid arguments:", rangeEnd, models);
-        return;
-      }
-
-      let rangeStart = models.findIndex((m) => m.getId() === this.lastId);
-
-      if (rangeStart === -1) {
-        this.toggleSelection(models[rangeEnd].getId());
-        return 1;
-      }
-
-      if (rangeStart > rangeEnd) {
-        const newEnd = rangeStart;
-        rangeStart = rangeEnd;
-        rangeEnd = newEnd;
-      }
-
-      for (let i = rangeStart; i <= rangeEnd; i++) {
-        this.addSelection(models[i].getId());
-      }
-
-      return (rangeEnd - rangeStart) + 1;
-    },
-    onSelect(ev, index) {
-      const inputType = this.input.eval(ev, index);
-
-      if (inputType !== ClickShort) {
-        return;
-      }
-
-      if (ev.shiftKey) {
-        this.selectRange(index, this.results);
-      } else {
-        this.toggleSelection(this.results[index].getId());
-      }
-    },
-    onClick(ev, index) {
-      const inputType = this.input.eval(ev, index);
-      const longClick = inputType === ClickLong;
-
-      if (inputType === InputInvalid) {
-        return;
-      }
-
-      if (longClick || this.selection.length > 0) {
-        if (longClick || ev.shiftKey) {
-          this.selectRange(index, this.results);
-        } else {
-          this.toggleSelection(this.results[index].getId());
-        }
-      } else {
-        this.$router.push(this.results[index].route(this.view));
-      }
-    },
-    onContextMenu(ev, index) {
-      if (this.$isMobile) {
-        ev.preventDefault();
-        ev.stopPropagation();
-
-        if (this.results[index]) {
-          this.selectRange(index, this.results);
-        }
-      }
-    },
     onShowHidden() {
       this.showHidden("yes");
     },
@@ -432,47 +223,6 @@ export default {
     clearQuery() {
       this.filter.q = '';
       this.updateQuery();
-    },
-    addSelection(uid) {
-      const pos = this.selection.indexOf(uid);
-
-      if (pos === -1) {
-        if (this.selection.length >= MaxItems) {
-          Notify.warn(this.$gettext("Can't select more items"));
-          return;
-        }
-
-        this.selection.push(uid);
-        this.lastId = uid;
-      }
-    },
-    toggleSelection(uid) {
-      const pos = this.selection.indexOf(uid);
-
-      if (pos !== -1) {
-        this.selection.splice(pos, 1);
-        this.lastId = "";
-      } else {
-        if (this.selection.length >= MaxItems) {
-          Notify.warn(this.$gettext("Can't select more items"));
-          return;
-        }
-
-        this.selection.push(uid);
-        this.lastId = uid;
-      }
-    },
-    removeSelection(uid) {
-      const pos = this.selection.indexOf(uid);
-
-      if (pos !== -1) {
-        this.selection.splice(pos, 1);
-        this.lastId = "";
-      }
-    },
-    clearSelection() {
-      this.selection.splice(0, this.selection.length);
-      this.lastId = "";
     },
     loadMore() {
       if (this.scrollDisabled || !this.active) {
