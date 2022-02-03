@@ -15,7 +15,6 @@
                       clearable overflow
                       color="secondary-dark"
                       @click:clear="clearQuery"
-                      @keyup.enter.native="updateQuery"
         ></v-text-field>
 
         <v-divider vertical></v-divider>
@@ -33,7 +32,7 @@
       </v-toolbar>
     </v-form>
 
-    <sublist :results="results" :loading="loading"/>
+    <sublist :results="filteredResult" :loading="loading"/>
     <p-sponsor-dialog :show="dialog.sponsor" @close="dialog.sponsor = false"></p-sponsor-dialog>
   </div>
 </template>
@@ -98,6 +97,12 @@ export default {
     readonly: function() {
       return this.busy || this.loading;
     },
+    filteredResult: function() {
+      return this.results.filter(x => {
+
+        return x.Name.toLowerCase().includes(this.filter.q.toLowerCase());
+      })
+    }
   },
   watch: {
     '$route'() {
@@ -113,8 +118,9 @@ export default {
       this.filter.hidden = query["hidden"] ? query["hidden"] : "";
       this.filter.order = this.sortOrder();
       this.routeName = this.$route.name;
-
-      this.search();
+    },
+    'filter.q'() {
+      this.updateQuery();
     }
   },
   created() {
