@@ -2,14 +2,15 @@
   <div class="video-wrapper" :style="style">
     <video :key="source" ref="video" class="video-player" :height="height" :width="width" :autoplay="autoplay"
            :style="style" :poster="poster" :loop="loop" preload="auto" controls playsinline @click.stop
-           @keydown.esc.stop.prevent="$emit('close')"
-           @keydown.space.enter.stop.prevent="togglePlayPause">
+           @keydown.esc.stop.prevent="$emit('close')">
       <source :src="source">
     </video>
   </div>
 </template>
 
 <script>
+import Event from "pubsub-js";
+
 export default {
   name: "PPhotoPlayer",
   props: {
@@ -67,6 +68,7 @@ export default {
     }
   },
   data: () => ({
+    subscriptions: [],
     refresh: false,
     style: `width: 90vw; height: 90vh`,
   }),
@@ -80,8 +82,13 @@ export default {
   mounted() {
     document.body.classList.add("player");
     this.render();
+    this.subscriptions['keydown.space'] = Event.subscribe('keydown.space', this.togglePlayPause);
   },
   beforeDestroy() {
+    for (let i = 0; i < this.subscriptions.length; i++) {
+      Event.unsubscribe(this.subscriptions[i]);
+    }
+
     document.body.classList.remove("player");
     this.stop();
   },

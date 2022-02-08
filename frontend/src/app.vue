@@ -32,11 +32,13 @@ export default {
   created() {
     window.addEventListener('touchstart', (e) => this.onTouchStart(e), {passive: true});
     window.addEventListener('touchmove', (e) => this.onTouchMove(e), {passive: true});
+    document.addEventListener('keydown', (e) => this.onKeyDown(e), {passive: true});
     this.$config.setVuetify(this.$vuetify);
   },
   destroyed() {
     window.removeEventListener('touchstart', (e) => this.onTouchStart(e), false);
     window.removeEventListener('touchmove', (e) => this.onTouchMove(e), false);
+    document.removeEventListener('keydown', (e) => this.onKeyDown(e), false);
   },
   methods: {
     onTouchStart(e) {
@@ -56,6 +58,14 @@ export default {
         Event.publish("touchmove.top");
         this.touchStart = 0;
       }
+    },
+    onKeyDown(e) {
+      switch (e.code) {
+        case 'Space':
+          Event.publish("keydown.space");
+          break;
+      }
+      console.log(e.code); //TODOAlex
     },
   },
 };
