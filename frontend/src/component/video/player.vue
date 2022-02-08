@@ -2,7 +2,8 @@
   <div class="video-wrapper" :style="style">
     <video :key="source" ref="video" class="video-player" :height="height" :width="width" :autoplay="autoplay"
            :style="style" :poster="poster" :loop="loop" preload="auto" controls playsinline @click.stop
-           @keydown.esc.stop.prevent="$emit('close')">
+           @keydown.esc.stop.prevent="$emit('close')"
+           @keydown.space.enter.stop.prevent="togglePlayPause">
       <source :src="source">
     </video>
   </div>
@@ -114,6 +115,16 @@ export default {
       el.src = src;
       el.poster = this.poster;
       el.play();
+    },
+    togglePlayPause() {
+      const el = this.videoEl();
+      if (!el) return;
+
+      if (el.paused) {
+        el.play();
+      } else {
+        el.pause();
+      }
     },
     pause() {
       const el = this.videoEl();
