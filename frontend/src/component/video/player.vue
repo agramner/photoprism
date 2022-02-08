@@ -81,13 +81,16 @@ export default {
     },
   },
   created() {
-    this.subscriptions['keydown.space'] = Event.subscribe('keydown.space', this.togglePlayPause);
+    console.log("CREATE"); //TODOAlex
+    this.subscriptions.push(Event.subscribe('keydown.space', this.togglePlayPause));
   },
   mounted() {
+    console.log("MOUNTED"); //TODOAlex
     document.body.classList.add("player");
     this.render();
   },
   beforeDestroy() {
+    console.log("BEFORE DEST"); //TODOAlex
     for (let i = 0; i < this.subscriptions.length; i++) {
       Event.unsubscribe(this.subscriptions[i]);
     }
