@@ -2,16 +2,13 @@
   <div class="video-wrapper" :style="style">
     <video :key="source" ref="video" class="video-player" :height="height" :width="width" :autoplay="autoplay"
            :style="style" :poster="poster" :loop="loop" preload="auto" controls playsinline @click.stop
-           @keydown.esc.stop.prevent="$emit('close')"
-           @keydown.space.prevent="() => {}">
+           @keydown.esc.stop.prevent="$emit('close')">
       <source :src="source">
     </video>
   </div>
 </template>
 
 <script>
-import Event from "pubsub-js";
-
 export default {
   name: "PPhotoPlayer",
   props: {
@@ -69,7 +66,6 @@ export default {
     }
   },
   data: () => ({
-    subscriptions: [],
     refresh: false,
     style: `width: 90vw; height: 90vh`,
   }),
@@ -80,21 +76,12 @@ export default {
       }
     },
   },
-  created() {
-    console.log("CREATE"); //TODOAlex
-    this.subscriptions.push(Event.subscribe('keydown.space', this.togglePlayPause));
-  },
   mounted() {
-    console.log("MOUNTED"); //TODOAlex
     document.body.classList.add("player");
     this.render();
+    this.$refs.video.focus();
   },
   beforeDestroy() {
-    console.log("BEFORE DEST"); //TODOAlex
-    for (let i = 0; i < this.subscriptions.length; i++) {
-      Event.unsubscribe(this.subscriptions[i]);
-    }
-
     document.body.classList.remove("player");
     this.stop();
   },
@@ -128,18 +115,6 @@ export default {
       el.src = src;
       el.poster = this.poster;
       el.play();
-    },
-    togglePlayPause() {
-      const el = this.videoEl();
-      if (!el) return;
-
-      if (this.source === "") return;
-
-      if (el.paused) {
-        el.play();
-      } else {
-        el.pause();
-      }
     },
     pause() {
       const el = this.videoEl();
