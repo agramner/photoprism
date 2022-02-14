@@ -121,6 +121,7 @@ export default {
     this.subscriptions['viewer.pause'] = Event.subscribe('viewer.pause', this.onPause);
     this.subscriptions['viewer.show'] = Event.subscribe('viewer.show', this.onShow);
     this.subscriptions['viewer.hide'] = Event.subscribe('viewer.hide', this.onHide);
+    this.subscriptions['keydown.space'] = Event.subscribe('keydown.space', this.onKeySpace)
   },
   destroyed() {
     this.onPause();
@@ -169,6 +170,13 @@ export default {
     },
     onSelect() {
       this.$clipboard.toggle(this.item);
+    },
+    onKeySpace() {
+      if (this.player.show) {
+        return;
+      }
+      
+      this.onPlay();
     },
     onPlay() {
       if (this.item && this.item.playable) {
