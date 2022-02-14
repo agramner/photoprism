@@ -173,11 +173,11 @@ func ResolveFaceCollisions() (conflicts, resolved int, err error) {
 
 	for _, f1 := range faces {
 		for _, f2 := range faces {
-			if matched, dist := f1.Match(face.Embeddings{f2.Embedding()}); matched {
-				if f1.SubjUID == f2.SubjUID {
-					continue
-				}
+			if f1.SubjUID == f2.SubjUID {
+				continue
+			}
 
+			if matched, dist := f1.Match(face.Embeddings{f2.Embedding()}); matched {
 				conflicts++
 
 				r := f1.SampleRadius + face.MatchDist
