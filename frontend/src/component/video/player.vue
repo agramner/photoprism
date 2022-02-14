@@ -75,6 +75,7 @@ export default {
   mounted() {
     document.body.classList.add("player");
     this.render();
+    this.$refs.video.focus();
   },
   beforeDestroy() {
     document.body.classList.remove("player");
