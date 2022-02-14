@@ -79,7 +79,7 @@ var (
 			s, t float64
 		)
 
-		for i := range a {
+		for i := 0; i < len(a); i++ {
 			t = a[i] - b[i]
 			s += t * t
 		}
@@ -93,7 +93,7 @@ var (
 			s, t float64
 		)
 
-		for i := range a {
+		for i := 0; i < len(a); i++ {
 			t = a[i] - b[i]
 			s += t * t
 		}
