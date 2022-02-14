@@ -43,6 +43,7 @@ export default {
   created() {
     window.addEventListener('touchstart', (e) => this.onTouchStart(e), {passive: true});
     window.addEventListener('touchmove', (e) => this.onTouchMove(e), {passive: true});
+    document.addEventListener('keydown', (e) => this.onKeyDown(e), {passive: true});
     this.subscriptions['view.refresh'] = Event.subscribe("view.refresh", (ev, data) => this.onRefresh(data));
     this.$config.setVuetify(this.$vuetify);
   },
@@ -52,6 +53,7 @@ export default {
     }
     window.removeEventListener('touchstart', (e) => this.onTouchStart(e), false);
     window.removeEventListener('touchmove', (e) => this.onTouchMove(e), false);
+    document.removeEventListener('keydown', (e) => this.onKeyDown(e), false);
   },
   methods: {
     onRefresh(config) {
@@ -74,6 +76,13 @@ export default {
       } else if (window.scrollY === 0 && y > this.touchStart + 200) {
         Event.publish("touchmove.top");
         this.touchStart = 0;
+      }
+    },
+    onKeyDown(e) {
+      switch (e.code) {
+        case 'Space':
+          Event.publish("keydown.space");
+          break;
       }
     },
   },
