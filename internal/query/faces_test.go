@@ -213,8 +213,19 @@ func TestMergeFaces(t *testing.T) {
 	})
 }
 
-func TestResolveFaceCollisions(t *testing.T) {
-	c, r, err := ResolveFaceCollisions()
+func TestResolveFaceCollisionsSingleWorker(t *testing.T) {
+	c, r, err := ResolveFaceCollisions(1)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.LessOrEqual(t, 3, c)
+	assert.LessOrEqual(t, 3, r)
+}
+
+func TestResolveFaceCollisionsMultipleWorkers(t *testing.T) {
+	c, r, err := ResolveFaceCollisions(4)
 
 	if err != nil {
 		t.Fatal(err)

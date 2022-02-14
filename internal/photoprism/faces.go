@@ -87,7 +87,7 @@ func (w *Faces) Start(opt FacesOptions) (err error) {
 
 	// Resolve collisions of different subject's faces.
 	start = time.Now()
-	if c, r, err := query.ResolveFaceCollisions(); err != nil {
+	if c, r, err := query.ResolveFaceCollisions(conf.Workers()); err != nil {
 		log.Errorf("faces: %s (resolve ambiguous subjects)", err)
 	} else if c > 0 {
 		log.Infof("faces: resolved %d / %d ambiguous subjects [%s]", r, c, time.Since(start))

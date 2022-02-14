@@ -2,6 +2,8 @@ package query
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
 
 	"github.com/photoprism/photoprism/internal/entity"
 	"github.com/photoprism/photoprism/internal/face"
@@ -164,49 +166,82 @@ func MergeFaces(merge entity.Faces) (merged *entity.Face, err error) {
 }
 
 // ResolveFaceCollisions resolves collisions of different subject's faces.
-func ResolveFaceCollisions() (conflicts, resolved int, err error) {
+func ResolveFaceCollisions(workers int) (conflicts, resolved int, err error) {
 	faces, err := Faces(true, false, false)
 
 	if err != nil {
 		return conflicts, resolved, err
 	}
 
+	type jobItem struct {
+		f1 entity.Face
+		f2 entity.Face
+	}
+
+	var conflictsAtomic, resolvedAtomic uint32
+	jobs := make(chan *jobItem)
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for job := range jobs {
+				f1 := job.f1
+				f2 := job.f2
+
+				if f1.SubjUID == f2.SubjUID {
+					continue
+				}
+
+				if matched, dist := f1.Match(face.Embeddings{f2.Embedding()}); matched {
+					atomic.AddUint32(&conflictsAtomic, 1)
+
+					r := f1.SampleRadius + face.MatchDist
+
+					log.Infof("face %s: ambiguous subject at dist %f, Ø %f from %d samples, collision Ø %f", f1.ID, dist, r, f1.Samples, f1.CollisionRadius)
+
+					if f1.SubjUID != "" {
+						log.Debugf("face %s: subject %s (%s %s)", f1.ID, sanitize.Log(f1.SubjUID), f1.SubjUID, entity.SrcString(f1.FaceSrc))
+					} else {
+						log.Debugf("face %s: has no subject (%s)", f1.ID, entity.SrcString(f1.FaceSrc))
+					}
+
+					if f2.SubjUID != "" {
+						log.Debugf("face %s: subject %s (%s %s)", f2.ID, sanitize.Log(f2.SubjUID), f2.SubjUID, entity.SrcString(f2.FaceSrc))
+					} else {
+						log.Debugf("face %s: has no subject (%s)", f2.ID, entity.SrcString(f2.FaceSrc))
+					}
+
+					if ok, err := f1.ResolveCollision(face.Embeddings{f2.Embedding()}); err != nil {
+						log.Errorf("face %s: %s", f1.ID, err)
+					} else if ok {
+						log.Infof("face %s: conflict has been resolved", f1.ID)
+						atomic.AddUint32(&resolvedAtomic, 1)
+					} else {
+						log.Debugf("face %s: conflict could not be resolved", f1.ID)
+					}
+				}
+			}
+		}()
+	}
+
 	for _, f1 := range faces {
 		for _, f2 := range faces {
-			if f1.SubjUID == f2.SubjUID {
-				continue
-			}
-
-			if matched, dist := f1.Match(face.Embeddings{f2.Embedding()}); matched {
-				conflicts++
-
-				r := f1.SampleRadius + face.MatchDist
-
-				log.Infof("face %s: ambiguous subject at dist %f, Ø %f from %d samples, collision Ø %f", f1.ID, dist, r, f1.Samples, f1.CollisionRadius)
-
-				if f1.SubjUID != "" {
-					log.Debugf("face %s: subject %s (%s %s)", f1.ID, sanitize.Log(f1.SubjUID), f1.SubjUID, entity.SrcString(f1.FaceSrc))
-				} else {
-					log.Debugf("face %s: has no subject (%s)", f1.ID, entity.SrcString(f1.FaceSrc))
-				}
-
-				if f2.SubjUID != "" {
-					log.Debugf("face %s: subject %s (%s %s)", f2.ID, sanitize.Log(f2.SubjUID), f2.SubjUID, entity.SrcString(f2.FaceSrc))
-				} else {
-					log.Debugf("face %s: has no subject (%s)", f2.ID, entity.SrcString(f2.FaceSrc))
-				}
-
-				if ok, err := f1.ResolveCollision(face.Embeddings{f2.Embedding()}); err != nil {
-					log.Errorf("face %s: %s", f1.ID, err)
-				} else if ok {
-					log.Infof("face %s: conflict has been resolved", f1.ID)
-					resolved++
-				} else {
-					log.Debugf("face %s: conflict could not be resolved", f1.ID)
-				}
+			jobs <- &jobItem{
+				f1: f1,
+				f2: f2,
 			}
 		}
 	}
+
+	close(jobs)
+	wg.Wait()
+
+	conflicts = int(conflictsAtomic)
+	resolved = int(resolvedAtomic)
 
 	return conflicts, resolved, nil
 }
