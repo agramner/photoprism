@@ -65,7 +65,6 @@ export default {
           Event.publish("keydown.space");
           break;
       }
-      console.log(e.code); //TODOAlex
     },
   },
 };
