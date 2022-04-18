@@ -1,5 +1,5 @@
 <template>
-  <div id="photo-viewer" class="p-viewer pswp" tabindex="-1" role="dialog" aria-hidden="true">
+  <div id="photo-viewer" class="p-viewer pswp" v-on:keydown.space.native="onKeySpace" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="pswp__bg"></div>
     <div class="pswp__scroll-wrap">
       <div class="pswp__container" :class="{ 'slideshow': slideshow.active }">
@@ -169,6 +169,13 @@ export default {
     },
     onSelect() {
       this.$clipboard.toggle(this.item);
+    },
+    onKeySpace() {
+      if (this.player.show) {
+        return;
+      }
+
+      this.onPlay();
     },
     onPlay() {
       if (this.item && this.item.playable) {
